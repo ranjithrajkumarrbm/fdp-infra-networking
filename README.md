@@ -53,23 +53,29 @@ State is stored per environment at
 
 ```bash
 terraform init \
-  -backend-config="bucket=<your-tf-state-bucket>" \
-  -backend-config="region=eu-west-2" \
   -backend-config="key=fdp-infra-networking/dev/terraform.tfstate"
 
 terraform plan  -var="environment=dev"
 terraform apply -var="environment=dev"
 ```
 
-### Backend bootstrap (one-time)
+### Backend
 
-The S3 state bucket must exist before the first `init`. Native S3 locking
-(Terraform ≥ 1.10) is used, so no DynamoDB table is needed. Suggested:
+State bucket and region are hardcoded in [backend.tf](backend.tf):
+
+- **bucket:** `fdp-infra-state-bucket-861477414666-eu-west-2-an`
+- **region:** `eu-west-2`
+- **key:** `fdp-infra-networking/<env>/terraform.tfstate` (passed at `init`)
+
+Native S3 locking (Terraform ≥ 1.10) is used, so no DynamoDB table is needed.
+The bucket must exist before the first `init`; versioning is recommended:
 
 ```bash
-aws s3api create-bucket --bucket <your-tf-state-bucket> --region eu-west-2 \
+aws s3api create-bucket \
+  --bucket fdp-infra-state-bucket-861477414666-eu-west-2-an --region eu-west-2 \
   --create-bucket-configuration LocationConstraint=eu-west-2
-aws s3api put-bucket-versioning --bucket <your-tf-state-bucket> \
+aws s3api put-bucket-versioning \
+  --bucket fdp-infra-state-bucket-861477414666-eu-west-2-an \
   --versioning-configuration Status=Enabled
 ```
 
@@ -92,8 +98,8 @@ static keys. Configure in the repo (Settings → Secrets and variables → Actio
 - `AWS_ACCESS_KEY_ID`
 - `AWS_SECRET_ACCESS_KEY`
 
-**Variables**
-- `TF_STATE_BUCKET` — name of the S3 bucket holding Terraform state
+(The state bucket is hardcoded in [backend.tf](backend.tf), so no repo variable
+is needed for it.)
 
 For per-environment credentials/approvals, create GitHub **Environments** named
 `dev` and `prod` and attach the secrets / required reviewers there — the
